@@ -127,6 +127,7 @@ Esse diretório está no `.gitignore`.
 - [ ] Criar testes para funções de ferramenta e scheduler.
 - [ ] Adicionar `docker-compose.yml` para setup mais simples.
 - [ ] Dinamização de Chaves API via Discord (com Mensagem Privada)
+- [ ] Adicionar funções de gerenciamento do servidor no discord
 
 ## Licença
 
