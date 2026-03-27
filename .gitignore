@@ -1,0 +1,8 @@
+.env
+memorias_base.txt
+gerenciar_memorias_selene.py
+
+quarto_da_selene/
+__pycache__/
+uploads/
+.venv/
