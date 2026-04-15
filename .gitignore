@@ -1,6 +1,5 @@
 .env
 memorias_base.txt
-gerenciar_memorias_selene.py
 comandos_servidor.txt
 
 quarto_da_selene/

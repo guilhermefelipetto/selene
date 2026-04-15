@@ -35,11 +35,6 @@ if GEMINI_KEY:
 
 default_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
 
-colecao_memorias = chroma_client.get_or_create_collection(
-    name="memorias_selene", 
-    embedding_function=default_ef
-)
-
 if not os.path.exists(ARQUIVO_PLANO): 
     with open(ARQUIVO_PLANO, "w", encoding="utf-8") as f:
         f.write("# Meu Plano de Ação\n\nUse este arquivo para anotar passos de tarefas complexas.")
@@ -255,32 +250,90 @@ def ler_conteudo_link(url):
         return texto[:4000] + "..."
     except Exception as e: return f"Erro ao ler link: {e}"
 
+def obter_colecao_memorias():
+    """Garante que a coleção sempre exista e pega a referência atualizada."""
+    return chroma_client.get_or_create_collection(
+        name="memorias_selene", 
+        embedding_function=default_ef
+    )
+
 def adicionar_memoria_vetorial(conteudo):
-    """Adiciona uma memória ao banco de dados vetorial."""
     try:
+        colecao = obter_colecao_memorias()
         import uuid
         id_memoria = str(uuid.uuid4())
-        colecao_memorias.add(
-            documents=[conteudo],
-            ids=[id_memoria]
-        )
+        colecao.add(documents=[conteudo], ids=[id_memoria])
         return "Memória guardada no meu banco vetorial."
     except Exception as e:
         return f"Erro ao salvar memória vetorial: {e}"
 
 def buscar_memorias_relevantes(query, n_resultados=5):
-    """Busca as memórias mais próximas do assunto atual."""
     try:
-        resultados = colecao_memorias.query(
-            query_texts=[query],
-            n_results=n_resultados
-        )
-        if resultados['documents']:
+        colecao = obter_colecao_memorias()
+        if colecao.count() == 0:
+            return "Nenhuma memória relevante encontrada."
+            
+        resultados = colecao.query(query_texts=[query], n_results=n_resultados)
+        if resultados['documents'] and resultados['documents'][0]:
             return "\n".join(resultados['documents'][0])
         return "Nenhuma memória relevante encontrada."
     except Exception as e:
         print(f"Erro na busca vetorial: {e}")
         return ""
+
+def resetar_memoria_vetorial():
+    """Deleta o banco, recria e injeta as memórias base."""
+    try:
+        try:
+            chroma_client.delete_collection("memorias_selene")
+        except Exception:
+            pass
+            
+        colecao = obter_colecao_memorias()
+        
+        # Pega o diretório exato onde o ferramentas.py está rodando
+        DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
+        base_file = os.path.join(DIRETORIO_ATUAL, "memorias_base.txt")
+        
+        count = 0
+        
+        if os.path.exists(base_file):
+            with open(base_file, "r", encoding="utf-8") as f:
+                linhas = f.readlines()
+            
+            import uuid
+            for linha in linhas:
+                linha = linha.strip()
+                if linha:
+                    colecao.add(documents=[linha], ids=[str(uuid.uuid4())])
+                    count += 1
+            return f"Banco vetorial resetado. {count} memórias base injetadas a partir do arquivo local."
+        return f"Banco vetorial resetado. Arquivo 'memorias_base.txt' não encontrado no servidor (esperado em: {base_file})."
+    except Exception as e:
+        return f"❌ Erro ao resetar memória: {e}"
+
+def limpar_quarto():
+    """Limpa a pasta de trabalho, mantendo arquivos essenciais e reinicia o Docker."""
+    import shutil
+    protegidos =["vetor_db", "tarefas.json", "plano_de_acao.md"]
+    apagados = 0
+    
+    try:
+        for item in os.listdir(PASTA_QUARTO):
+            if item not in protegidos:
+                caminho = os.path.join(PASTA_QUARTO, item)
+                if os.path.isdir(caminho):
+                    shutil.rmtree(caminho)
+                else:
+                    os.remove(caminho)
+                apagados += 1
+        
+        iniciar_docker()
+        
+        return f"Workspace limpo! {apagados} arquivos/pastas removidos. Container Docker reiniciado."
+    except Exception as e:
+        return f"❌ Erro ao limpar o workspace: {e}"
+
 
 lista_ferramentas =[
     {
@@ -346,7 +399,7 @@ lista_ferramentas =[
     {
         "type": "function", "function": {
             "name": "adicionar_memoria", 
-            "description": "SALVE APENAS fatos concretos e ÚTEIS sobre o usuário ou o projeto. PROIBIDO salvar logs de execução, avisos de que o sistema funcionou, ou relatos de testes. Se a informação for óbvia ou trivial, NÃO SALVE. Salve apenas o que você precisará consultar daqui a 3 meses.",
+            "description": "Salva fatos concretos no banco vetorial. OBRIGATÓRIO iniciar o conteúdo com uma tag como [Fato], [Regra], [Preferência] ou[Projeto]. Ex: '[Fato] O dev se chama Guilherme.'",
             "parameters": {"type": "object", "properties": {"conteudo": {"type": "string"}}, "required": ["conteudo"]}
         }
     },

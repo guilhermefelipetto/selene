@@ -19,6 +19,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+bot.remove_command('help')
+
 canal_ativo = None 
 ARQUIVO_TAREFAS = os.path.join(PASTA_QUARTO, "tarefas.json")
 
@@ -46,6 +48,61 @@ async def on_message(message):
         historico_passivo[canal_id].append(f"[{hora_str}] {autor}: {texto}")
 
     await bot.process_commands(message)
+
+@bot.command(name='help')
+async def painel_ajuda(ctx):
+    """Exibe o painel de comandos da Selene."""
+    
+    embed = discord.Embed(
+        title="🌙 Selene OS - Central de Comandos",
+        description="Sistemas operacionais online. Aguardando instruções.",
+        color=discord.Color.dark_purple()
+    )
+    
+    # Comandos Gerais (Todos veem)
+    comandos_gerais = (
+        "**`!s <mensagem>`** - Falar diretamente comigo.\n"
+        "**`!csm`** - Limpa a memória de curto prazo (reseta o contexto da conversa atual)."
+    )
+    embed.add_field(name="💬 Comandos Gerais", value=comandos_gerais, inline=False)
+    
+    # Comandos de Admin
+    if ctx.author.id == OWNER_ID:
+        comandos_admin = (
+            "**`!setllm <modelo>`** - Troca meu provedor/modelo neural.\n"
+            "**`!docker_reset`** - Destrói e recria meu container Docker do zero.\n"
+            "**`!clean_workspace`** - Limpa arquivos temporários do meu quarto.\n"
+            "**`!reset_memory`** - Formata o banco vetorial e restaura o `memorias_base.txt`."
+        )
+        embed.add_field(name="⚙️ Comandos de Administrador (Dev)", value=comandos_admin, inline=False)
+    
+    embed.set_footer(text="Selene Core v3.5 | Proatividade Ativada")
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='reset_memory')
+async def reset_memory_cmd(ctx):
+    """[DEV] Reseta o banco vetorial e injeta as memórias base."""
+    if ctx.author.id != OWNER_ID:
+        await ctx.send("❌ Acesso negado. Apenas meu desenvolvedor pode resetar minha mente.")
+        return
+    
+    msg = await ctx.send("🧠 Formatando banco vetorial e restaurando memórias base...")
+    import ferramentas
+    resultado = ferramentas.resetar_memoria_vetorial()
+    await msg.edit(content=resultado)
+
+@bot.command(name='clean_workspace')
+async def clean_workspace_cmd(ctx):
+    """[DEV] Limpa o quarto da Selene (mantém DB e tarefas) e reinicia o Docker."""
+    if ctx.author.id != OWNER_ID:
+        await ctx.send("❌ Acesso negado.")
+        return
+    
+    msg = await ctx.send("🧹 Limpando o workspace e reiniciando o container Docker...")
+    import ferramentas
+    resultado = ferramentas.limpar_quarto()
+    await msg.edit(content=resultado)
 
 @bot.command(name='setllm')
 async def alterar_llm(ctx, escolha: str = ""):
