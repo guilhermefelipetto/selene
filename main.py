@@ -40,7 +40,7 @@ async def on_message(message):
     if canal_id not in historico_passivo:
         historico_passivo[canal_id] = deque(maxlen=40)
 
-    texto = message.content[:600]
+    texto = message.clean_content[:600]
     autor = message.author.display_name
     hora_str = message.created_at.strftime("%H:%M")
 
@@ -160,6 +160,16 @@ async def limpar_memoria_curto_prazo(ctx):
 async def falar_com_selene(ctx, *, mensagem: str = ""):
     global canal_ativo
     canal_ativo = ctx.channel
+
+    for user in ctx.message.mentions:
+        mensagem = mensagem.replace(f'<@{user.id}>', f'@{user.display_name}')
+        mensagem = mensagem.replace(f'<@!{user.id}>', f'@{user.display_name}')
+        
+    for role in ctx.message.role_mentions:
+        mensagem = mensagem.replace(f'<@&{role.id}>', f'@{role.name}')
+        
+    for channel in ctx.message.channel_mentions:
+        mensagem = mensagem.replace(f'<#{channel.id}>', f'#{channel.name}')
 
     async with ctx.typing():
         try:
