@@ -12,8 +12,8 @@ load_dotenv()
 DEEPSEEK_KEY = os.getenv('DEEPSEEK_API_KEY')
 OPENAI_KEY = os.getenv('OPENAI_API_KEY')
 
-client_deepseek = AsyncOpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com")
-client_openai = AsyncOpenAI(api_key=OPENAI_KEY)
+client_deepseek = AsyncOpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com", timeout=90.0)
+client_openai = AsyncOpenAI(api_key=OPENAI_KEY, timeout=90.0)
 
 PROVEDOR_ATUAL = "deepseek" 
 MODELO_ATUAL = "deepseek-chat"
@@ -31,8 +31,8 @@ def configurar_llm(modelo_ou_provedor):
     
     if m == "deepseek":
         PROVEDOR_ATUAL = "deepseek"
-        MODELO_ATUAL = "deepseek-chat"
-        return True, "DeepSeek (V3/Chat)"
+        MODELO_ATUAL = "deepseek-v4-flash"
+        return True, "DeepSeek (V4/Chat)"
     
     # modelos suportados da openai
     elif m in ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.3-codex", "gpt-5.3-chat-latest"]:

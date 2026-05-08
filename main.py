@@ -177,65 +177,65 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
     for channel in ctx.message.channel_mentions:
         mensagem = mensagem.replace(f'<#{channel.id}>', f'#{channel.name}')
 
-    async with ctx.typing():
-        try:
-            canal_id = ctx.channel.id
-            contexto_chat = "\n".join(historico_passivo.get(canal_id,[]))
-            
-            if historico_passivo.get(canal_id):
-                historico_passivo[canal_id].pop()
+    try:
+        canal_id = ctx.channel.id
+        contexto_chat = "\n".join(historico_passivo.get(canal_id, []))
 
-            autor_comando = ctx.author.display_name
+        if historico_passivo.get(canal_id):
+            historico_passivo[canal_id].pop()
 
-            info_anexos = ""
-            caminhos_locais_uploads = []
-            if ctx.message.attachments:
-                pasta_uploads = os.path.join(PASTA_QUARTO, "uploads")
-                os.makedirs(pasta_uploads, exist_ok=True)
+        autor_comando = ctx.author.display_name
 
-                nomes_arquivos = []
-                for anexo in ctx.message.attachments:
-                    caminho_local = os.path.join(pasta_uploads, anexo.filename)
-                    await anexo.save(caminho_local)
-                    nomes_arquivos.append(f"/workspace/quarto/uploads/{anexo.filename}")
-                    caminhos_locais_uploads.append(caminho_local)
+        info_anexos = ""
+        caminhos_locais_uploads = []
+        if ctx.message.attachments:
+            pasta_uploads = os.path.join(PASTA_QUARTO, "uploads")
+            os.makedirs(pasta_uploads, exist_ok=True)
 
-                info_anexos = f"\n[Arquivos enviados pelo usuário: {', '.join(nomes_arquivos)}]"
+            nomes_arquivos = []
+            for anexo in ctx.message.attachments:
+                caminho_local = os.path.join(pasta_uploads, anexo.filename)
+                await anexo.save(caminho_local)
+                nomes_arquivos.append(f"/workspace/quarto/uploads/{anexo.filename}")
+                caminhos_locais_uploads.append(caminho_local)
 
-            mensagem_injetada = (
-                f"[CONTEXTO RECENTE DO CHAT]\n"
-                f"{contexto_chat if contexto_chat else 'Sem histórico recente.'}\n\n"
-                f"---\n"
-                f"[AÇÃO REQUERIDA]\n"
-                f"Usuário {autor_comando} disse: \"{mensagem}\"\n"
-                f"{info_anexos}"
-            )
+            info_anexos = f"\n[Arquivos enviados pelo usuário: {', '.join(nomes_arquivos)}]"
 
-            async def enviar_status(texto):
-                await ctx.send(f"*{texto}*", delete_after=10)
+        mensagem_injetada = (
+            f"[CONTEXTO RECENTE DO CHAT]\n"
+            f"{contexto_chat if contexto_chat else 'Sem histórico recente.'}\n\n"
+            f"---\n"
+            f"[AÇÃO REQUERIDA]\n"
+            f"Usuário {autor_comando} disse: \"{mensagem}\"\n"
+            f"{info_anexos}"
+        )
 
+        async def enviar_status(texto):
+            await ctx.send(f"*{texto}*", delete_after=10)
+
+        async with ctx.typing():
             resposta_final = await selene_brain.processar_mensagem_usuario(
                 mensagem_injetada, enviar_status,
                 canal_id=ctx.channel.id,
                 query_busca=mensagem
             )
-            
-            if resposta_final:
-                for i in range(0, len(resposta_final), 1900):
-                    await ctx.send(resposta_final[i:i+1900])
 
-            imagens = glob.glob(os.path.join(PASTA_QUARTO, "*.png")) + glob.glob(os.path.join(PASTA_QUARTO, "*.jpg"))
-            for img_path in imagens:
-                await ctx.send(file=discord.File(img_path))
-                os.remove(img_path)
+        if resposta_final:
+            for i in range(0, len(resposta_final), 1900):
+                await ctx.send(resposta_final[i:i+1900])
 
-            for caminho in caminhos_locais_uploads:
-                if os.path.exists(caminho):
-                    os.remove(caminho)
+        imagens = glob.glob(os.path.join(PASTA_QUARTO, "*.png")) + glob.glob(os.path.join(PASTA_QUARTO, "*.jpg"))
+        for img_path in imagens:
+            await ctx.send(file=discord.File(img_path))
+            os.remove(img_path)
 
-        except Exception as e:
-            print(f"ERRO CRÍTICO: {e}")
-            await ctx.send(f"Tive um curto-circuito cerebral: {e}")
+        for caminho in caminhos_locais_uploads:
+            if os.path.exists(caminho):
+                os.remove(caminho)
+
+    except Exception as e:
+        print(f"ERRO CRÍTICO: {e}")
+        await ctx.send(f"Tive um curto-circuito cerebral: {e}")
 
 @tasks.loop(minutes=1)
 async def verificador_de_tarefas():
