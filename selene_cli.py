@@ -71,7 +71,7 @@ def main():
                 pass
             
             colecao, _ = obter_colecao()
-            base_file = "memorias_base.txt"
+            base_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "memorias_base.txt")
             
             if os.path.exists(base_file):
                 import uuid

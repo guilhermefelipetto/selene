@@ -2,7 +2,7 @@ import os
 import re
 import json
 from datetime import datetime
-from collections import deque
+from collections import defaultdict, deque
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
@@ -18,7 +18,7 @@ client_openai = AsyncOpenAI(api_key=OPENAI_KEY)
 PROVEDOR_ATUAL = "deepseek" 
 MODELO_ATUAL = "deepseek-chat"
 
-historico_mensagens = deque(maxlen=15)
+historicos_por_canal = defaultdict(lambda: deque(maxlen=15))
 
 def configurar_llm(modelo_ou_provedor):
     """
@@ -55,13 +55,14 @@ def limpar_resposta_ia(texto):
     texto_limpo = re.sub(r'</｜DSML｜.*?>', '', texto_limpo)
     return texto_limpo.strip()
 
-async def processar_mensagem_usuario(mensagem_usuario, callback_enviar_discord):
+async def processar_mensagem_usuario(mensagem_usuario, callback_enviar_discord, canal_id=0, query_busca=None):
     agora = datetime.now()
     data_formatada = agora.strftime("%A, %d de %B de %Y")
     hora_formatada = agora.strftime("%H:%M")
-    
-    memorias_relevantes = ferramentas.buscar_memorias_relevantes(mensagem_usuario)
 
+    memorias_relevantes = ferramentas.buscar_memorias_relevantes(query_busca or mensagem_usuario)
+
+    historico_mensagens = historicos_por_canal[canal_id]
     historico_mensagens.append({"role": "user", "content": mensagem_usuario})
 
     system_prompt = f"""
@@ -120,7 +121,7 @@ async def processar_mensagem_usuario(mensagem_usuario, callback_enviar_discord):
     mensagens_conversa.extend(list(historico_mensagens))
 
     tentativas = 0
-    LIMITE_TENTATIVAS = 64
+    LIMITE_TENTATIVAS = 24
     
     # dinamizando o client da llm...
     if PROVEDOR_ATUAL == "openai":

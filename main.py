@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 import selene_brain
-from ferramentas import PASTA_QUARTO
+from ferramentas import PASTA_QUARTO, CONTAINER_NAME
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -142,7 +142,7 @@ async def reset_docker_selene(ctx):
     
     try:
         import subprocess
-        subprocess.run("docker rm -f selene_sandbox", shell=True, check=True)
+        subprocess.run(f"docker rm -f {CONTAINER_NAME}", shell=True, check=True)
         
         import ferramentas
         ferramentas.iniciar_docker()
@@ -153,10 +153,16 @@ async def reset_docker_selene(ctx):
 
 @bot.command(name='csm')
 async def limpar_memoria_curto_prazo(ctx):
-    selene_brain.historico_mensagens.clear()
+    selene_brain.historicos_por_canal[ctx.channel.id].clear()
     await ctx.send("🧹 Memória de curto prazo limpa! Cérebro resetado.")
 
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"*Calma. Espera {error.retry_after:.1f}s.*", delete_after=5)
+
 @bot.command(name='s')
+@commands.cooldown(1, 3, commands.BucketType.user)
 async def falar_com_selene(ctx, *, mensagem: str = ""):
     global canal_ativo
     canal_ativo = ctx.channel
@@ -182,18 +188,19 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
             autor_comando = ctx.author.display_name
 
             info_anexos = ""
+            caminhos_locais_uploads = []
             if ctx.message.attachments:
                 pasta_uploads = os.path.join(PASTA_QUARTO, "uploads")
                 os.makedirs(pasta_uploads, exist_ok=True)
-                
+
                 nomes_arquivos = []
                 for anexo in ctx.message.attachments:
                     caminho_local = os.path.join(pasta_uploads, anexo.filename)
                     await anexo.save(caminho_local)
                     nomes_arquivos.append(f"/workspace/quarto/uploads/{anexo.filename}")
-                
-                extensoes_imagem = ['.png', '.jpg', '.jpeg', '.webp']
-                info_anexos = "\n[O usuário enviou arquivos/imagens. Estão no /workspace/quarto/uploads/]"
+                    caminhos_locais_uploads.append(caminho_local)
+
+                info_anexos = f"\n[Arquivos enviados pelo usuário: {', '.join(nomes_arquivos)}]"
 
             mensagem_injetada = (
                 f"[CONTEXTO RECENTE DO CHAT]\n"
@@ -207,7 +214,11 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
             async def enviar_status(texto):
                 await ctx.send(f"*{texto}*", delete_after=10)
 
-            resposta_final = await selene_brain.processar_mensagem_usuario(mensagem_injetada, enviar_status)
+            resposta_final = await selene_brain.processar_mensagem_usuario(
+                mensagem_injetada, enviar_status,
+                canal_id=ctx.channel.id,
+                query_busca=mensagem
+            )
             
             if resposta_final:
                 for i in range(0, len(resposta_final), 1900):
@@ -217,6 +228,10 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
             for img_path in imagens:
                 await ctx.send(file=discord.File(img_path))
                 os.remove(img_path)
+
+            for caminho in caminhos_locais_uploads:
+                if os.path.exists(caminho):
+                    os.remove(caminho)
 
         except Exception as e:
             print(f"ERRO CRÍTICO: {e}")

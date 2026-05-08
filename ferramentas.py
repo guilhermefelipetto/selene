@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import shlex
 import subprocess
 import time
 from datetime import datetime, timedelta
@@ -129,7 +130,7 @@ def apagar_arquivo(nome_arquivo):
 async def executar_comando_terminal(comando):
     """Roda comandos bash no Docker de forma ASSÍNCRONA para não travar o bot."""
     try:
-        cmd_docker = f'docker exec {CONTAINER_NAME} bash -c "{comando}"'
+        cmd_docker = f'docker exec {CONTAINER_NAME} bash -c {shlex.quote(comando)}'
         
         # Cria o processo de forma assíncrona
         processo = await asyncio.create_subprocess_shell(
