@@ -18,6 +18,7 @@ OWNER_ID = int(os.getenv('OWNER_ID', 0))
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.typing = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 bot.remove_command('help')
@@ -217,12 +218,16 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
         async def manter_digitando():
             try:
                 while True:
-                    async with ctx.typing():
-                        await asyncio.sleep(8)
+                    try:
+                        async with ctx.typing():
+                            await asyncio.sleep(9) # Segura por 9s (limite do discord=10s)
+                    except Exception:
+                        await asyncio.sleep(5) # Se der erro 429, recua 5s e tenta de novo
             except asyncio.CancelledError:
                 pass
 
         task_digitando = asyncio.create_task(manter_digitando())
+        resposta_final = None
 
         try:
             resposta_final = await selene_brain.processar_mensagem_usuario(
