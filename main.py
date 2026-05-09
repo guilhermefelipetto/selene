@@ -218,7 +218,7 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
             try:
                 while True:
                     try:
-                        await ctx.trigger_typing()
+                        await ctx.typing()
                     except Exception:
                         pass # ignora silenciosamente o erro 429 do Discord
                     await asyncio.sleep(8) # status renova a cada 8 segundos
