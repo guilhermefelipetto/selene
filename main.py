@@ -217,11 +217,8 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
         async def manter_digitando():
             try:
                 while True:
-                    try:
-                        await ctx.typing()
-                    except Exception:
-                        pass # ignora silenciosamente o erro 429 do Discord
-                    await asyncio.sleep(8) # status renova a cada 8 segundos
+                    async with ctx.typing():
+                        await asyncio.sleep(8)
             except asyncio.CancelledError:
                 pass
 
