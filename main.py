@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import json
 import os
@@ -179,7 +180,7 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
 
     try:
         canal_id = ctx.channel.id
-        contexto_chat = "\n".join(historico_passivo.get(canal_id, []))
+        contexto_chat = "\n".join(historico_passivo.get(canal_id,[]))
 
         if historico_passivo.get(canal_id):
             historico_passivo[canal_id].pop()
@@ -187,12 +188,12 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
         autor_comando = ctx.author.display_name
 
         info_anexos = ""
-        caminhos_locais_uploads = []
+        caminhos_locais_uploads =[]
         if ctx.message.attachments:
             pasta_uploads = os.path.join(PASTA_QUARTO, "uploads")
             os.makedirs(pasta_uploads, exist_ok=True)
 
-            nomes_arquivos = []
+            nomes_arquivos =[]
             for anexo in ctx.message.attachments:
                 caminho_local = os.path.join(pasta_uploads, anexo.filename)
                 await anexo.save(caminho_local)
@@ -213,12 +214,27 @@ async def falar_com_selene(ctx, *, mensagem: str = ""):
         async def enviar_status(texto):
             await ctx.send(f"*{texto}*", delete_after=10)
 
-        async with ctx.typing():
+        async def manter_digitando():
+            try:
+                while True:
+                    try:
+                        await ctx.trigger_typing()
+                    except Exception:
+                        pass # ignora silenciosamente o erro 429 do Discord
+                    await asyncio.sleep(8) # status renova a cada 8 segundos
+            except asyncio.CancelledError:
+                pass
+
+        task_digitando = asyncio.create_task(manter_digitando())
+
+        try:
             resposta_final = await selene_brain.processar_mensagem_usuario(
                 mensagem_injetada, enviar_status,
                 canal_id=ctx.channel.id,
                 query_busca=mensagem
             )
+        finally:
+            task_digitando.cancel()
 
         if resposta_final:
             for i in range(0, len(resposta_final), 1900):
